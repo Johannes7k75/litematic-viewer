@@ -1,0 +1,116 @@
+// API between the viewer's browser client and its local server.
+// TypeScript for both sides is generated into src/gen with `bun run generate`.
+syntax = "proto3";
+
+package litematic.v1;
+
+// Lists and parses the .litematic files in the served folder.
+service ViewerService {
+  // All schematics below the served folder, with metadata.
+  rpc ListSchematics(ListSchematicsRequest) returns (ListSchematicsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Parse a schematic from the served folder.
+  rpc GetSchematic(GetSchematicRequest) returns (GetSchematicResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Parse an uploaded file (drag and drop), not from the served folder.
+  rpc ParseSchematic(ParseSchematicRequest) returns (ParseSchematicResponse);
+}
+
+message ListSchematicsRequest {}
+
+message ListSchematicsResponse {
+  // Absolute path of the served folder.
+  string root = 1;
+  repeated SchematicInfo files = 2;
+}
+
+message Dims {
+  uint32 x = 1;
+  uint32 y = 2;
+  uint32 z = 3;
+}
+
+// Metadata of one file, read without parsing its blocks.
+message SchematicInfo {
+  // Relative to the served folder.
+  string path = 1;
+  uint64 size = 2;
+  // Seconds since the epoch.
+  double mtime = 3;
+  // Content hash, used to hide identical copies.
+  string md5 = 4;
+  // A thumbnail is available at /api/preview?p=<path>.
+  bool preview = 5;
+  string name = 6;
+  string author = 7;
+  string description = 8;
+  Dims dims = 9;
+  uint32 blocks = 10;
+  uint32 regions = 11;
+  // Milliseconds since the epoch.
+  int64 created = 12;
+  uint32 mc_version = 13;
+  // Set when the file could not be read.
+  optional string error = 14;
+}
+
+message GetSchematicRequest {
+  // Relative to the served folder.
+  string path = 1;
+}
+
+message GetSchematicResponse {
+  Schematic schematic = 1;
+}
+
+message ParseSchematicRequest {
+  // A raw (gzip'd) .litematic file.
+  bytes data = 1;
+}
+
+message ParseSchematicResponse {
+  Schematic schematic = 1;
+}
+
+message BlockState {
+  // Without the "minecraft:" prefix.
+  string name = 1;
+  map<string, string> props = 2;
+}
+
+message Material {
+  string name = 1;
+  uint32 count = 2;
+}
+
+message SchematicMeta {
+  string name = 1;
+  string author = 2;
+  string description = 3;
+  uint32 total_blocks = 4;
+  uint32 mc_version = 5;
+}
+
+// Mob displayed inside one spawner in the merged block grid.
+message SpawnerMob {
+  uint32 x = 1;
+  uint32 y = 2;
+  uint32 z = 3;
+  // Namespaced entity ID from the spawner's saved SpawnData.
+  string entity = 4;
+}
+
+// A parsed schematic: all regions merged into one block grid.
+message Schematic {
+  Dims dims = 1;
+  // u16 little-endian palette index per block, indexed (y * z_size + z) * x_size + x. 0 is air.
+  bytes grid = 2;
+  repeated BlockState palette = 3;
+  repeated string regions = 4;
+  SchematicMeta meta = 5;
+  // Items needed to build it, most common first.
+  repeated Material materials = 6;
+  repeated SpawnerMob spawners = 7;
+}

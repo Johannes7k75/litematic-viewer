@@ -1,0 +1,39 @@
+{
+  "name": "litematic-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local 3D viewer for Litematica .litematic schematics",
+  "scripts": {
+    "start": "bun src/server/index.ts",
+    "dev": "bun --watch src/server/index.ts --dev",
+    "build": "bun src/tools/build-client.ts",
+    "build:assets": "bun src/tools/build-assets.ts",
+    "generate": "make generate",
+    "collect": "bun src/tools/collect.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint:proto": "make lint"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.16.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-web": "2.2.0",
+    "fast-png": "8.0.0",
+    "fflate": "0.8.3",
+    "hono": "4.13.14",
+    "prismarine-nbt": "2.8.0",
+    "solid-js": "1.9.16",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7",
+    "@babel/preset-typescript": "^7",
+    "@types/babel__core": "^7.20.5",
+    "@types/bun": "^1.4.4",
+    "@types/three": "0.186.0",
+    "babel-preset-solid": "1.9.16",
+    "minecraft-data": "3.117.0",
+    "typescript": "^7.0.2"
+  }
+}

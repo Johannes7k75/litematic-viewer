@@ -1,0 +1,130 @@
+:root {
+  color-scheme: dark; /* dark native form controls */
+  scrollbar-color: #3a3f4b transparent;
+  --bg: #15171c;
+  --panel: rgba(28, 31, 38, 0.92);
+  --panel-solid: #1c1f26;
+  --border: #2d313b;
+  --text: #e4e6eb;
+  --muted: #8b919e;
+  --accent: #5fb35f;
+  --accent-bg: rgba(95, 179, 95, 0.15);
+  --hover: #252932;
+  --error: #e88;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+#app { display: flex; height: 100%; }
+
+/* ------------------------------------------------------------ shared controls */
+
+button, input { font: inherit; color: inherit; }
+button {
+  background: var(--hover); border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 10px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.active { background: var(--accent-bg); border-color: var(--accent); }
+input[type='search'] {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 9px; outline: none;
+}
+input[type='search']:focus { border-color: var(--accent); }
+input[type='checkbox'], input[type='range'] { accent-color: var(--accent); }
+code { background: var(--hover); padding: 1px 5px; border-radius: 4px; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+.row { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; backdrop-filter: blur(6px);
+}
+.icon { width: 20px; height: 20px; image-rendering: pixelated; border-radius: 3px; background-repeat: no-repeat; }
+
+/* ------------------------------------------------------------ file list */
+
+.files {
+  width: 320px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+  background: var(--panel-solid); border-right: 1px solid var(--border);
+}
+.files header { padding: 14px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); }
+.files h1 { font-size: 16px; margin: 0; }
+.files footer { padding: 8px 14px; border-top: 1px solid var(--border); word-break: break-all; }
+.files .count { margin-left: auto; }
+.files ul { list-style: none; margin: 0; padding: 6px; overflow-y: auto; flex: 1; }
+.files li { display: flex; gap: 10px; padding: 7px; border-radius: 7px; cursor: pointer; align-items: center; }
+.files li:hover { background: var(--hover); }
+.files li.selected { background: var(--accent-bg); outline: 1px solid var(--accent); }
+.files .thumb {
+  width: 48px; height: 48px; flex-shrink: 0; border-radius: 5px; background: var(--bg) center / cover no-repeat;
+  image-rendering: pixelated; display: grid; place-items: center; color: var(--muted); font-size: 20px;
+}
+.files .info { min-width: 0; flex: 1; }
+.files .name { font-weight: 600; }
+.files .name, .files .meta, .files .path { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.files .meta, .files .path { font-size: 11.5px; color: var(--muted); }
+.files .dup { font-size: 11px; color: var(--accent); }
+
+/* ------------------------------------------------------------ stage */
+
+.stage { position: relative; flex: 1; min-width: 0; }
+.stage canvas { width: 100%; height: 100%; display: block; }
+.stage.dragover::after {
+  content: 'Drop .litematic to view'; position: absolute; inset: 12px; border: 2px dashed var(--accent);
+  border-radius: 12px; display: grid; place-items: center; background: rgba(21, 23, 28, 0.7); font-size: 18px;
+}
+.overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--muted); pointer-events: none; text-align: center; padding: 20px;
+}
+.overlay.error { color: var(--error); }
+.spinner {
+  width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.topbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; }
+.topbar .title { font-weight: 600; font-size: 15px; }
+.topbar button { white-space: nowrap; }
+.topbar .sun { display: flex; align-items: center; gap: 6px; }
+.topbar .sun input { width: 120px; }
+.help { position: absolute; bottom: 12px; left: 12px; right: 12px; text-align: center; pointer-events: none; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12.5px; max-width: 280px; z-index: 5;
+}
+.tooltip .props { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+
+/* ------------------------------------------------------------ layers */
+
+.layers { position: absolute; left: 12px; bottom: 40px; width: 300px; display: flex; flex-direction: column; gap: 6px; }
+.layers .slider { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.layers .slider span { width: 44px; }
+.layers .slider input { flex: 1; }
+
+/* ------------------------------------------------------------ materials */
+
+.materials {
+  position: absolute; right: 12px; top: 72px; bottom: 40px; width: 360px;
+  display: flex; flex-direction: column; gap: 8px; min-height: 0;
+}
+.materials .list { overflow-y: auto; flex: 1; min-height: 0; font-size: 12.5px; }
+.materials .item {
+  display: grid; grid-template-columns: 26px 1fr 56px 112px; align-items: center; gap: 4px;
+  padding: 3px 4px; border-bottom: 1px solid var(--border);
+}
+.materials .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.materials .n { text-align: right; font-variant-numeric: tabular-nums; }
+.materials .st { color: var(--muted); font-size: 11.5px; text-align: right; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  #app { flex-direction: column; }
+  .files { width: 100%; height: 40%; border-right: 0; border-bottom: 1px solid var(--border); }
+  .materials { width: auto; left: 12px; top: auto; height: 45%; }
+  .layers { width: auto; right: 12px; }
+}
