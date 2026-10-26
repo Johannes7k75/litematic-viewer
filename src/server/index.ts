@@ -1,6 +1,6 @@
 // Local Litematica schematic viewer.
 //
-// Usage: bun start [schematics_dir] [--port 8765] [--no-browser] [--dev]
+// Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev]
 //
 // --dev rebuilds the browser bundle whenever client code changes (reload the page to see it)
 // and never opens a browser. Run it under `bun --watch` (see `make dev`) so that server
@@ -13,13 +13,15 @@ import { ASSETS_DIR, assetsOutdated, buildAssets, PROJECT_DIR } from '../tools/b
 import { buildClient, CLIENT_OUT } from '../tools/build-client.ts';
 import { createApp } from './app.ts';
 
-const USAGE = 'Usage: bun start [schematics_dir] [--port 8765] [--no-browser] [--dev]';
+const USAGE = 'Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev]';
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   allowPositionals: true,
   options: {
     port: { type: 'string', default: '8765' },
+    // Localhost only by default; the Docker image listens on 0.0.0.0 and compose publishes it to localhost.
+    host: { type: 'string', default: '127.0.0.1' },
     'no-browser': { type: 'boolean', default: false },
     dev: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
@@ -45,12 +47,12 @@ await buildClient();
 
 const port = Number(values.port);
 const server = Bun.serve({
-  hostname: '127.0.0.1',
+  hostname: values.host,
   port,
   fetch: createApp({ schematicsDir, clientDir: CLIENT_OUT, assetsDir: ASSETS_DIR }).fetch,
 });
 
-const url = `http://127.0.0.1:${server.port}/`;
+const url = `http://${values.host === '0.0.0.0' ? '127.0.0.1' : values.host}:${server.port}/`;
 console.log(`Serving ${schematicsDir}\nOpen ${url}  (Ctrl+C to stop)`);
 if (values.dev) watchClient();
 else if (!values['no-browser']) {

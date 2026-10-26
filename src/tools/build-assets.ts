@@ -6,7 +6,7 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { decodePng, encodePng, type Image } from '../server/png.ts';
 import type { BlockAssets, BlockstateDef, Direction, ElementDef, FaceDef, ModelDef, ModelRef, UV, Vec3 } from '../shared/types.ts';
 import { blockData } from './block-data.ts';
@@ -44,26 +44,30 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** Newest Minecraft client jar from Prism Launcher (native or Flatpak) or the vanilla launcher. */
+/**
+ * Newest Minecraft client jar from Prism Launcher (native or Flatpak) or the vanilla launcher.
+ * `MINECRAFT_DIR` (a folder of `<version>/<jar>` dirs, like `.minecraft/versions`) is searched too.
+ */
 export function findJar(): string {
   const roots = [
-    '.local/share/PrismLauncher/libraries/com/mojang/minecraft',
-    '.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/libraries/com/mojang/minecraft',
-    '.minecraft/versions',
+    ...(process.env.MINECRAFT_DIR ? [{ dir: process.env.MINECRAFT_DIR, anyJar: true }] : []),
+    { dir: '.local/share/PrismLauncher/libraries/com/mojang/minecraft', anyJar: false },
+    { dir: '.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/libraries/com/mojang/minecraft', anyJar: false },
+    { dir: '.minecraft/versions', anyJar: true },
   ];
   const jars: string[] = [];
-  for (const rel of roots) {
-    const dir = join(homedir(), rel);
+  for (const { dir: rel, anyJar } of roots) {
+    const dir = resolve(homedir(), rel);
     if (!existsSync(dir)) continue;
     for (const ver of readdirSync(dir)) {
       const vdir = join(dir, ver);
       if (!statSync(vdir).isDirectory()) continue;
       for (const f of readdirSync(vdir)) {
-        if (f.endsWith('.jar') && /\d/.test(f) && (f.includes('client') || rel.endsWith('versions'))) jars.push(join(vdir, f));
+        if (f.endsWith('.jar') && /\d/.test(f) && (anyJar || f.includes('client'))) jars.push(join(vdir, f));
       }
     }
   }
-  if (!jars.length) throw new Error('No Minecraft client jar found; pass one as an argument.');
+  if (!jars.length) throw new Error('No Minecraft client jar found; pass one as an argument or set MINECRAFT_DIR.');
   return jars.sort(compareVersions).at(-1)!;
 }
 
