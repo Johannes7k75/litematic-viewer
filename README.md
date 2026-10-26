@@ -1,5 +1,9 @@
 # Litematic Viewer
 
+[![CI](https://github.com/Johannes7k75/litematic-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/Johannes7k75/litematic-viewer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Bun](https://img.shields.io/badge/Bun-%3E%3D1.4-black?logo=bun)](https://bun.sh)
+
 A local 3D viewer for [Litematica](https://github.com/maruohon/litematica) `.litematic`
 schematics, rendered with Minecraft's real block textures and models.
 
@@ -184,6 +188,10 @@ After editing the `.proto`, run `make generate`. It runs [buf](https://buf.build
 [protoc-gen-es](https://github.com/bufbuild/protobuf-es) in Docker with versions pinned in the
 `Makefile`, so nothing extra needs installing. The generated files are committed, and
 `bun test` runs `make proto-check` when Docker is available.
+
+## License
+
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 
 ## Disclaimer
 

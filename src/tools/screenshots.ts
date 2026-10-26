@@ -7,13 +7,43 @@
 //   PORT        port for the temporary viewer (default: 8799)
 //   CHROME_BIN  Chrome or Chromium binary (default: /usr/bin/chromium)
 
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import puppeteer, { type Page } from 'puppeteer-core';
 
 const PROJECT_DIR = join(import.meta.dir, '..', '..');
-const FILES = (process.env.SCHEMATICS ?? '1.20.6 FO/Cathedral.litematic,1.18.21/Farms/Blaze Farm.litematic').split(',');
+
+function resolveSchematicFiles(): string[] {
+  if (process.env.SCHEMATICS) {
+    return process.env.SCHEMATICS.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  const schematicsDir = resolve(PROJECT_DIR, 'schematics');
+  const found: string[] = [];
+  const walk = (d: string) => {
+    try {
+      for (const ent of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, ent.name);
+        if (ent.isDirectory()) walk(p);
+        else if (ent.isFile() && ent.name.toLowerCase().endsWith('.litematic')) {
+          found.push(p);
+        }
+      }
+    } catch {
+      // unreadable
+    }
+  };
+  walk(schematicsDir);
+  return found;
+}
+
+const FILES = resolveSchematicFiles();
+if (FILES.length === 0) {
+  console.error('No .litematic schematics found to take screenshots of.');
+  console.error('Place .litematic files in schematics/ or specify SCHEMATICS=path/to/schematic.litematic');
+  process.exit(1);
+}
+
 const PORT = process.env.PORT ?? '8799';
 const BASE = `http://127.0.0.1:${PORT}`;
 const CHROME = process.env.CHROME_BIN ?? '/usr/bin/chromium';
@@ -96,7 +126,15 @@ const shots: Record<string, (page: Page) => Promise<void>> = {
 
 /** Serve a temporary copy of FILES and wait until the viewer answers. */
 async function startViewer(dir: string) {
-  for (const f of FILES) copyFileSync(resolve(PROJECT_DIR, 'schematics', f), join(dir, basename(f)));
+  for (const f of FILES) {
+    const src = existsSync(f) ? f : resolve(PROJECT_DIR, 'schematics', f);
+    if (!existsSync(src)) {
+      console.error(`Schematic file not found: ${f}`);
+      console.error('Specify existing files with SCHEMATICS=path/to/schematic.litematic');
+      process.exit(1);
+    }
+    copyFileSync(src, join(dir, basename(f)));
+  }
   const server = Bun.spawn(['bun', join(PROJECT_DIR, 'src', 'server', 'index.ts'), dir, '--port', PORT, '--no-browser'], {
     stdout: 'ignore', stderr: 'inherit',
   });

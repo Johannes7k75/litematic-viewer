@@ -4,6 +4,26 @@
   "private": true,
   "type": "module",
   "description": "Local 3D viewer for Litematica .litematic schematics",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Johannes7k75/litematic-viewer.git"
+  },
+  "homepage": "https://github.com/Johannes7k75/litematic-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/Johannes7k75/litematic-viewer/issues"
+  },
+  "keywords": [
+    "minecraft",
+    "litematica",
+    "litematic",
+    "schematic",
+    "viewer",
+    "3d",
+    "threejs",
+    "solidjs",
+    "bun"
+  ],
   "scripts": {
     "start": "bun src/server/index.ts",
     "dev": "bun --watch src/server/index.ts --dev",
