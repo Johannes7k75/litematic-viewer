@@ -172,17 +172,17 @@ export function buildAssets(source = assetSource(), outDir = ASSETS_DIR): BlockA
   const resolveTex = (textures: Record<string, TextureRef>, ref: TextureRef | undefined): string | null => {
     for (let depth = 0; depth < 10; depth++) {
       if (ref && typeof ref === 'object') ref = ref.sprite; // newer format: {"sprite": "...", ...}
-      if (!(ref && ref.startsWith('#'))) break;
+      if (!(ref?.startsWith('#'))) break;
       ref = textures[ref.slice(1)];
     }
     return typeof ref === 'string' && !ref.startsWith('#') ? norm(ref) : null;
   };
 
   const usedModels = new Set<string>();
-  const use = (a: ModelRef | ModelRef[]) => asArray(a).forEach((r) => usedModels.add(norm(r.model)));
+  const use = (a: ModelRef | ModelRef[]) => asArray(a).forEach((r) => {usedModels.add(norm(r.model))});
   for (const bs of Object.values(blockstates)) {
     Object.values(bs.variants ?? {}).forEach(use);
-    (bs.multipart ?? []).forEach((part) => use(part.apply));
+    (bs.multipart ?? []).forEach((part) => {use(part.apply)});
   }
 
   const tileIndex: Record<string, number> = {};

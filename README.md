@@ -9,12 +9,15 @@ Minecraft install needed.
 Built with [Bun](https://bun.sh), [Hono](https://hono.dev), [ConnectRPC](https://connectrpc.com),
 [SolidJS](https://www.solidjs.com) and [three.js](https://threejs.org).
 
+![A cathedral schematic rendered with shaders](docs/screenshots/viewer.png)
+
 ## Features
 
 - **Schematic browser**: every `.litematic` in a folder (searched recursively), with Litematica
   preview thumbnails, search and duplicate hiding
 - **Textured 3D render** using vanilla block models: stairs, slabs, redstone, rails, glass,
   water and lava, chests (single, double, trapped, ender, copper) and more
+- **Shaders**: optional sunlight, shadows and ambient occlusion, with an adjustable sun angle
 - **Layer slicing**: show a range of layers or a single one (`PageUp` / `PageDown`)
 - **Block inspector**: hover a block to see its name, block state and coordinates
 - **Material list** with stack and shulker box counts, and CSV copy
@@ -25,7 +28,12 @@ Built with [Bun](https://bun.sh), [Hono](https://hono.dev), [ConnectRPC](https:/
 | --- | ------------------ |
 | `R` | Reset camera       |
 | `M` | Toggle materials   |
+| `L` | Toggle shaders     |
 | `PageUp` / `PageDown` | Move the layer slice |
+
+| Material list | Layer slicing | Block inspector |
+| :---: | :---: | :---: |
+| ![Material list](docs/screenshots/materials.png) | ![Layer slicing](docs/screenshots/layers.png) | ![Block inspector](docs/screenshots/hover.png) |
 
 ## Quick start with Docker
 
@@ -89,17 +97,6 @@ bun run collect ~/.local/share/PrismLauncher/instances /mnt/windows/Users/you
 ```
 
 ## How it works
-
-```
-proto/          API schema (litematic.v1.ViewerService)
-docker/         Image for protobuf code generation (buf + protoc-gen-es)
-src/gen/        Generated protobuf/Connect TypeScript (do not edit)
-src/shared/     Shared types; conversion between the wire schematic and the in-memory grid
-src/server/     Hono app, Connect service, .litematic parsing, schematic index, PNG helpers
-src/client/     Solid components, three.js viewer, mesher (runs in a Web Worker)
-src/tools/      Asset builder, chest and mob models, client build, collect
-tests/          bun test suites
-```
 
 The server parses schematics with prismarine-nbt and sends the block grid to the browser over
 RPC, where it is meshed in a Web Worker and drawn with three.js.
@@ -167,6 +164,21 @@ reload the page after a client rebuild.
 
 Equivalent `bun run` scripts exist for most targets: `start`, `dev`, `build`, `build:assets`,
 `generate`, `collect`, `typecheck`, `test` and `lint:proto`.
+
+### Screenshots
+
+The README screenshots in `docs/screenshots/` are taken by `bun run screenshots`. It starts a
+viewer on a temporary folder holding only the chosen schematics and captures it with headless
+Chromium through [puppeteer-core](https://pptr.dev):
+
+```sh
+bun run screenshots              # all shots
+bun run screenshots hover        # only some of them (viewer, materials, layers, hover)
+```
+
+Configure it with `SCHEMATICS` (comma-separated `.litematic` files, relative to `./schematics`
+or absolute; the first one is opened), `PORT` (default 8799) and `CHROME_BIN` (default
+`/usr/bin/chromium`).
 
 After editing the `.proto`, run `make generate`. It runs [buf](https://buf.build) and
 [protoc-gen-es](https://github.com/bufbuild/protobuf-es) in Docker with versions pinned in the

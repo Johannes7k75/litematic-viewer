@@ -11,6 +11,7 @@
     "build:assets": "bun src/tools/build-assets.ts",
     "generate": "make generate",
     "collect": "bun src/tools/collect.ts",
+    "screenshots": "bun src/tools/screenshots.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "lint:proto": "make lint"
@@ -35,6 +36,7 @@
     "babel-preset-solid": "1.9.16",
     "minecraft-assets": "1.19.0",
     "minecraft-data": "3.117.0",
+    "puppeteer-core": "25.12.0",
     "typescript": "^7.0.2"
   }
 }
