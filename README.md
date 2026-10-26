@@ -1,10 +1,10 @@
 # Litematic Viewer
 
 A local 3D viewer for [Litematica](https://github.com/maruohon/litematica) `.litematic`
-schematics, rendered with the real block textures and models from your own Minecraft client jar.
+schematics, rendered with Minecraft's real block textures and models.
 
 Point it at a folder, open your browser, and browse every schematic you have, with no
-Minecraft instance running.
+Minecraft install needed.
 
 Built with [Bun](https://bun.sh), [Hono](https://hono.dev), [ConnectRPC](https://connectrpc.com),
 [SolidJS](https://www.solidjs.com) and [three.js](https://threejs.org).
@@ -27,18 +27,6 @@ Built with [Bun](https://bun.sh), [Hono](https://hono.dev), [ConnectRPC](https:/
 | `M` | Toggle materials   |
 | `PageUp` / `PageDown` | Move the layer slice |
 
-## Requirements
-
-The viewer doesn't ship any Minecraft assets. On first start it builds a texture atlas from a
-Minecraft **client jar** on your machine. It finds the newest jar automatically in:
-
-- Prism Launcher: `~/.local/share/PrismLauncher/libraries/com/mojang/minecraft`
-  (or the Flatpak equivalent)
-- The vanilla launcher: `~/.minecraft/versions`
-- Any folder you set in `MINECRAFT_DIR` (a folder of `<version>/<jar>` dirs)
-
-You can also pass a jar directly with `bun run build:assets path/to/client.jar`.
-
 ## Quick start with Docker
 
 You only need Docker with Compose.
@@ -49,27 +37,24 @@ cd litematic-viewer
 docker compose up -d
 ```
 
-Open <http://127.0.0.1:8765/>. The first start takes a few seconds longer while the block
-assets are built. They are kept in a Docker volume, so later starts are quick.
+Open <http://127.0.0.1:8765/>. The block textures and the client are built into the image,
+so there is nothing else to set up.
 
-By default this serves `./schematics` and reads jars from `~/.minecraft/versions`. Change
-either with environment variables or a `.env` file next to `docker-compose.yml`:
+By default this serves `./schematics`. Change it with environment variables or a `.env` file
+next to `docker-compose.yml`:
 
 ```sh
 # .env
 SCHEMATICS_DIR=/path/to/your/schematics
-MINECRAFT_DIR=/home/you/.local/share/PrismLauncher/libraries/com/mojang/minecraft
 PORT=8765
 ```
 
-| Variable         | Default                   | Description                                           |
-| ---------------- | ------------------------- | ----------------------------------------------------- |
-| `SCHEMATICS_DIR` | `./schematics`            | Folder with `.litematic` files (mounted read-only)    |
-| `MINECRAFT_DIR`  | `~/.minecraft/versions`   | Folder of Minecraft version dirs with client jars     |
-| `PORT`           | `8765`                    | Host port; only published on `127.0.0.1`              |
+| Variable         | Default        | Description                                        |
+| ---------------- | -------------- | -------------------------------------------------- |
+| `SCHEMATICS_DIR` | `./schematics` | Folder with `.litematic` files (mounted read-only) |
+| `PORT`           | `8765`         | Host port; only published on `127.0.0.1`           |
 
-After updating the code, run `docker compose up -d --build`. To rebuild the block assets (for
-example after a Minecraft update), remove the volume: `docker compose down -v`.
+After updating the code, run `docker compose up -d --build`.
 
 ## Running from source
 
@@ -82,6 +67,8 @@ bun start /some/folder       # or any folder (searched recursively)
 ```
 
 This opens <http://127.0.0.1:8765/> in your browser. The server only listens on localhost.
+On first start the block assets are built (see [Block assets](#block-assets)); the client is
+rebuilt on every start.
 
 | Option          | Default     | Description                                      |
 | --------------- | ----------- | ------------------------------------------------ |
@@ -89,6 +76,7 @@ This opens <http://127.0.0.1:8765/> in your browser. The server only listens on 
 | `--host`        | `127.0.0.1` | Address to listen on                             |
 | `--no-browser`  |             | Don't open a browser tab                         |
 | `--dev`         |             | Rebuild the client on changes (see Development)  |
+| `--prebuilt`    |             | Serve `dist/` and `assets/` without rebuilding   |
 
 ### Gathering your schematics
 
@@ -113,10 +101,23 @@ src/tools/      Asset builder, chest and mob models, client build, collect
 tests/          bun test suites
 ```
 
-The asset builder extracts blockstates, models and textures from the client jar into
-`assets/atlas.png` and `assets/blocks.json`. Block names, shapes and tints come from
-[minecraft-data](https://github.com/PrismarineJS/minecraft-data) at build time. The browser
-receives the parsed block grid over RPC and meshes it in a Web Worker.
+The server parses schematics with prismarine-nbt and sends the block grid to the browser over
+RPC, where it is meshed in a Web Worker and drawn with three.js.
+
+### Block assets
+
+The asset builder bakes blockstates, block models and textures into `assets/atlas.png` and
+`assets/blocks.json`. They come from PrismarineJS
+[minecraft-assets](https://github.com/PrismarineJS/minecraft-assets) (the newest version it
+has); block names, collision shapes and tints come from
+[minecraft-data](https://github.com/PrismarineJS/minecraft-data). Both are npm packages, so
+nothing is downloaded from Mojang.
+
+```sh
+bun run build:assets                         # newest minecraft-assets version
+bun run build:assets 1.21.11                 # a specific version
+bun run build:assets path/to/client.jar      # a Minecraft client jar, e.g. for a newer release
+```
 
 ### API
 
@@ -157,12 +158,12 @@ make check                        # buf lint, type-check and tests (run before c
 make start DIR=~/schematics       # build and serve a folder
 make generate                     # lint proto/ and regenerate src/gen/ (Docker)
 make proto-check                  # fail if src/gen/ is stale (Docker)
-make assets JAR=path/to/client.jar  # rebuild assets/ from a specific jar
+make assets JAR=1.21.11           # rebuild assets/ (a version or a client jar path)
 ```
 
 Make variables: `DIR` (schematics folder), `PORT` (default 8765), `ARGS` (extra server flags,
-for example `ARGS=--no-browser`) and `JAR` (for `make assets`). In `make dev`, reload the page
-after a client rebuild.
+for example `ARGS=--no-browser`) and `JAR` (version or jar for `make assets`). In `make dev`,
+reload the page after a client rebuild.
 
 Equivalent `bun run` scripts exist for most targets: `start`, `dev`, `build`, `build:assets`,
 `generate`, `collect`, `typecheck`, `test` and `lint:proto`.
@@ -175,4 +176,5 @@ After editing the `.proto`, run `make generate`. It runs [buf](https://buf.build
 ## Disclaimer
 
 Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
-Minecraft assets are read from your own copy of the game and are never redistributed.
+Minecraft textures and models are loaded from the minecraft-assets package at build time and
+are not part of this repository.

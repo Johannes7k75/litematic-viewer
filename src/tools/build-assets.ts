@@ -1,12 +1,12 @@
-// Extracts block textures, blockstates and models from a Minecraft client jar into
-// assets/atlas.png and assets/blocks.json, which the viewer renders with.
+// Bakes block textures, blockstates and models into assets/atlas.png and assets/blocks.json,
+// which the viewer renders with. They come from the PrismarineJS minecraft-assets package
+// (newest version by default), or from a Minecraft client jar for versions it doesn't have yet.
 //
-// Usage: bun run build:assets [path/to/minecraft-client.jar]
+// Usage: bun run build:assets [version | path/to/minecraft-client.jar]
 
 import { strFromU8, unzipSync } from 'fflate';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { decodePng, encodePng, type Image } from '../server/png.ts';
 import type { BlockAssets, BlockstateDef, Direction, ElementDef, FaceDef, ModelDef, ModelRef, UV, Vec3 } from '../shared/types.ts';
 import { blockData } from './block-data.ts';
@@ -25,51 +25,9 @@ const COLS = 64;
 const PAD = 4;
 const CELL = TILE + 2 * PAD;
 /** Bump when blocks.json / atlas.png change shape, so existing assets get rebuilt. */
-export const ASSETS_FORMAT = 3;
+export const ASSETS_FORMAT = 4;
 /** Textures the viewer needs even if no model references them. */
 const EXTRA_TEXTURES = ['block/water_still', 'block/water_flow', 'block/lava_still', 'block/lava_flow'];
-
-// ---------------------------------------------------------------- jar lookup
-
-function versionKey(jar: string): number[] {
-  return basename(dirname(jar)).split(/[.-]/).map((p) => (/^\d+$/.test(p) ? +p : 0));
-}
-
-function compareVersions(a: string, b: string): number {
-  const ka = versionKey(a), kb = versionKey(b);
-  for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
-    const d = (ka[i] ?? 0) - (kb[i] ?? 0);
-    if (d) return d;
-  }
-  return 0;
-}
-
-/**
- * Newest Minecraft client jar from Prism Launcher (native or Flatpak) or the vanilla launcher.
- * `MINECRAFT_DIR` (a folder of `<version>/<jar>` dirs, like `.minecraft/versions`) is searched too.
- */
-export function findJar(): string {
-  const roots = [
-    ...(process.env.MINECRAFT_DIR ? [{ dir: process.env.MINECRAFT_DIR, anyJar: true }] : []),
-    { dir: '.local/share/PrismLauncher/libraries/com/mojang/minecraft', anyJar: false },
-    { dir: '.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/libraries/com/mojang/minecraft', anyJar: false },
-    { dir: '.minecraft/versions', anyJar: true },
-  ];
-  const jars: string[] = [];
-  for (const { dir: rel, anyJar } of roots) {
-    const dir = resolve(homedir(), rel);
-    if (!existsSync(dir)) continue;
-    for (const ver of readdirSync(dir)) {
-      const vdir = join(dir, ver);
-      if (!statSync(vdir).isDirectory()) continue;
-      for (const f of readdirSync(vdir)) {
-        if (f.endsWith('.jar') && /\d/.test(f) && (anyJar || f.includes('client'))) jars.push(join(vdir, f));
-      }
-    }
-  }
-  if (!jars.length) throw new Error('No Minecraft client jar found; pass one as an argument or set MINECRAFT_DIR.');
-  return jars.sort(compareVersions).at(-1)!;
-}
 
 // ---------------------------------------------------------------- textures
 
@@ -120,24 +78,85 @@ interface RawModel {
   elements?: RawElement[];
 }
 
+// ---------------------------------------------------------------- sources
+
+/** Where block models, blockstates and textures are read from. */
+export interface AssetSource {
+  /** Shown in logs and stored in blocks.json. */
+  name: string;
+  /** Minecraft version, used to pick the matching minecraft-data release. */
+  version: string | null;
+  /** Keyed like the jar's paths under models/, e.g. "block/stone". */
+  models: Record<string, RawModel>;
+  blockstates: Record<string, BlockstateDef>;
+  /** PNG bytes of a texture by its path under textures/, e.g. "block/stone". */
+  texture(path: string): Uint8Array | undefined;
+}
+
+const versionKey = (v: string) => v.split(/[.-]/).map((p) => (/^\d+$/.test(p) ? +p : 0));
+const compareVersions = (a: string, b: string) => {
+  const ka = versionKey(a), kb = versionKey(b);
+  for (let i = 0; i < Math.max(ka.length, kb.length); i++) if ((ka[i] ?? 0) !== (kb[i] ?? 0)) return (ka[i] ?? 0) - (kb[i] ?? 0);
+  return 0;
+};
+
+const assetsData = () => join(dirname(Bun.resolveSync('minecraft-assets/package.json', import.meta.dir)), 'minecraft-assets', 'data');
+
+/** Minecraft versions minecraft-assets has block models for, oldest first. */
+export function assetVersions(): string[] {
+  const data = assetsData();
+  return readdirSync(data).filter((v) => existsSync(join(data, v, 'blocks_models.json'))).sort(compareVersions);
+}
+
+/** One version from the minecraft-assets package (the newest by default). */
+export function minecraftAssets(version = assetVersions().at(-1)!): AssetSource {
+  const dir = join(assetsData(), version);
+  if (!existsSync(join(dir, 'blocks_models.json'))) {
+    throw new Error(`minecraft-assets has no ${version}; pick one of ${assetVersions().join(', ')} or pass a client jar`);
+  }
+  const json = (file: string) => JSON.parse(readFileSync(join(dir, file), 'utf8'));
+  const models: Record<string, RawModel> = {};
+  for (const [n, m] of Object.entries(json('blocks_models.json'))) models[`block/${n}`] = m as RawModel;
+  return {
+    name: `minecraft-assets ${version}`, version, models, blockstates: json('blocks_states.json'),
+    texture: (path) => {
+      // Same folders as the jar's textures/, except block/ and item/ are plural.
+      const file = join(dir, `${path.replace(/^block\//, 'blocks/').replace(/^item\//, 'items/')}.png`);
+      return existsSync(file) ? readFileSync(file) : undefined;
+    },
+  };
+}
+
+/** A Minecraft client jar; its version is taken from the folder name (launchers keep jars in `<version>/`). */
+export function clientJar(path: string): AssetSource {
+  const MODELS = 'assets/minecraft/models/', STATES = 'assets/minecraft/blockstates/';
+  const TEXTURES = 'assets/minecraft/textures/';
+  const jar = unzipSync(readFileSync(path), {
+    filter: ({ name }) => name.startsWith(`${MODELS}block/`) || name.startsWith(STATES) || name.startsWith(TEXTURES),
+  });
+  const models: Record<string, RawModel> = {}, blockstates: Record<string, BlockstateDef> = {};
+  for (const [n, data] of Object.entries(jar)) {
+    if (!n.endsWith('.json')) continue;
+    if (n.startsWith(MODELS)) models[n.slice(MODELS.length, -5)] = JSON.parse(strFromU8(data));
+    else if (n.startsWith(STATES)) blockstates[n.slice(STATES.length, -5)] = JSON.parse(strFromU8(data));
+  }
+  return {
+    name: basename(path), version: basename(dirname(path)).match(/^\d+(\.\d+)+$/)?.[0] ?? null,
+    models, blockstates, texture: (p) => jar[`${TEXTURES}${p}.png`],
+  };
+}
+
+/** A jar for paths ending in .jar, otherwise a minecraft-assets version (newest if omitted). */
+export function assetSource(arg?: string): AssetSource {
+  return arg?.endsWith('.jar') ? clientJar(arg) : minecraftAssets(arg);
+}
+
 const norm = (ref: string) => (ref.includes(':') ? ref.split(':')[1] : ref);
 const asArray = <T>(a: T | T[]): T[] => (Array.isArray(a) ? a : [a]);
 
-export function buildAssets(jarPath = findJar(), outDir = ASSETS_DIR): BlockAssets {
-  console.log(`Using ${jarPath}`);
-  const MODELS = 'assets/minecraft/models/block/', STATES = 'assets/minecraft/blockstates/';
-  const TEXTURES = 'assets/minecraft/textures/';
-  const jar = unzipSync(readFileSync(jarPath), {
-    filter: ({ name }) => name.startsWith(MODELS) || name.startsWith(STATES) || name.startsWith(TEXTURES),
-  });
-
-  const rawModels: Record<string, RawModel> = {};
-  const blockstates: Record<string, BlockstateDef> = {};
-  for (const [n, data] of Object.entries(jar)) {
-    if (!n.endsWith('.json')) continue;
-    if (n.startsWith(MODELS)) rawModels[`block/${n.slice(MODELS.length, -5)}`] = JSON.parse(strFromU8(data));
-    else if (n.startsWith(STATES)) blockstates[n.slice(STATES.length, -5)] = JSON.parse(strFromU8(data));
-  }
+export function buildAssets(source = assetSource(), outDir = ASSETS_DIR): BlockAssets {
+  console.log(`Using ${source.name}`);
+  const { models: rawModels, blockstates } = source;
 
   /** Merge a model with its parents. */
   const flatten = (name: string, seen = new Set<string>()): [Record<string, TextureRef>, RawElement[] | null] => {
@@ -174,7 +193,7 @@ export function buildAssets(jarPath = findJar(), outDir = ASSETS_DIR): BlockAsse
     return tileIndex[key];
   };
   const loadImage = (texPath: string): Image | null => {
-    const data = jar[`${TEXTURES}${texPath}.png`];
+    const data = source.texture(texPath);
     if (!data) return null;
     try {
       return decodePng(data);
@@ -225,7 +244,7 @@ export function buildAssets(jarPath = findJar(), outDir = ASSETS_DIR): BlockAsse
     return !!bs && modelsOf(bs).every((r) => !models[norm(r.model)]?.e.length);
   };
   const data = blockData(
-    basename(dirname(jarPath)).match(/^\d+(\.\d+)+$/)?.[0] ?? null,
+    source.version,
     { grass: loadImage('colormap/grass'), foliage: loadImage('colormap/foliage') },
     entityRendered,
   );
@@ -263,7 +282,7 @@ export function buildAssets(jarPath = findJar(), outDir = ASSETS_DIR): BlockAsse
   });
 
   const out: BlockAssets = {
-    jar: basename(jarPath), dataVersion: data.version, names: data.names, shapes: data.shapes, tints: data.tints,
+    source: source.name, dataVersion: data.version, names: data.names, shapes: data.shapes, tints: data.tints,
     format: ASSETS_FORMAT, tile: TILE, pad: PAD, cols: COLS, width, height,
     tiles: tileIndex, translucent, models, blockstates,
   };
@@ -288,7 +307,7 @@ export function assetsOutdated(outDir = ASSETS_DIR): boolean {
 if (import.meta.main) {
   // --if-needed: only rebuild when assets/ is missing or outdated (used by `make build`).
   const args = process.argv.slice(2);
-  const jar = args.find((a) => !a.startsWith('--'));
-  if (!args.includes('--if-needed') || assetsOutdated()) buildAssets(jar);
+  const arg = args.find((a) => !a.startsWith('--'));
+  if (!args.includes('--if-needed') || assetsOutdated()) buildAssets(assetSource(arg));
   else console.log('Block assets are up to date');
 }

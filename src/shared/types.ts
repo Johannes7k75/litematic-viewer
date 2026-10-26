@@ -5,7 +5,7 @@ export type UV = [number, number, number, number];
 export type Direction = 'down' | 'up' | 'north' | 'south' | 'west' | 'east';
 export const DIRECTIONS: readonly Direction[] = ['down', 'up', 'north', 'south', 'west', 'east'];
 
-// ---------------------------------------------------------------- blocks.json (built from the Minecraft jar)
+// ---------------------------------------------------------------- blocks.json (built by tools/build-assets.ts)
 
 export interface FaceDef {
   /** Atlas tile index. */
@@ -65,7 +65,7 @@ export interface BlockstateDef {
   multipart?: { when?: Condition; apply: ModelRef | ModelRef[] }[];
 }
 
-/** Tint colors as 0xRRGGBB (from minecraft-data and the jar's colormaps). */
+/** Tint colors as 0xRRGGBB (from minecraft-data and the colormap textures). */
 export interface BlockTints {
   grass: number;
   foliage: number;
@@ -79,7 +79,8 @@ export interface BlockTints {
 export interface BlockAssets {
   /** Layout version of these files (see ASSETS_FORMAT in tools/build-assets.ts). */
   format: number;
-  jar: string;
+  /** Where models and textures came from, e.g. "minecraft-assets 26.1" or a jar's file name. */
+  source: string;
   /** minecraft-data version the names, shapes and tints come from. */
   dataVersion: string;
   /** Display names, e.g. iron_block -> "Block of Iron". */

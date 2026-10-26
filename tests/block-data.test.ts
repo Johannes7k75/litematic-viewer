@@ -12,7 +12,7 @@ describe('pickVersion', () => {
   test('uses the exact version when minecraft-data has it', () => {
     expect(pickVersion('1.20.6')).toBe('1.20.6');
   });
-  test('falls back to the newest version not newer than the jar', () => {
+  test('falls back to the newest version not newer than the assets', () => {
     expect(pickVersion('99.0')).toBe(releases.at(-1)!);
     expect(pickVersion(null)).toBe(releases.at(-1)!);
   });
@@ -30,7 +30,7 @@ describe.skipIf(!assets)('baked minecraft-data', () => {
     expect(hex(tintFor(a, 'birch_leaves', {}))).toBe('#' + constant('birch_leaves').toString(16).padStart(6, '0'));
     expect(hex(tintFor(a, 'redstone_wire', { power: '15' }))).toBe('#' + a.tints.redstone[15].toString(16).padStart(6, '0'));
     expect(tintFor(a, 'oak_leaves', {})).toEqual(tintFor(a, 'vine', {}));
-    // Plains grass from the jar's colormap is Minecraft's well-known #91bd59.
+    // Plains grass from the colormap is Minecraft's well-known #91bd59.
     expect(hex(tintFor(a, 'short_grass', {}))).toBe('#91bd59');
   });
 

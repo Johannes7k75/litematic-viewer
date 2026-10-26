@@ -73,7 +73,7 @@ const CREEPER = [
   ...[-1, 1].flatMap((x) => [-1, 1].map((z) => box([x * 2 - 2, 18, z * 4 - 2], [4, 6, 4], [0, 16]))),
 ];
 
-/** Texture candidates include paths from both older and newer client jars. */
+/** Texture candidates include paths from both older and newer Minecraft versions. */
 const MOBS: Record<string, { textures: string[]; parts: Part[] }> = {
   zombie: { textures: ['zombie/zombie'], parts: humanoid(false, true) },
   husk: { textures: ['zombie/husk'], parts: humanoid(false, true) },

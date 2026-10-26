@@ -6,7 +6,7 @@ import type { Image } from '../server/png.ts';
 import type { BlockTints } from '../shared/types.ts';
 
 export interface BlockData {
-  /** minecraft-data version used (closest to the jar's). */
+  /** minecraft-data version used (closest to the assets' Minecraft version). */
   version: string;
   /** Display names, e.g. iron_block -> "Block of Iron". */
   names: Record<string, string>;
@@ -25,11 +25,11 @@ const cmp = (a: string, b: string) => {
   return 0;
 };
 
-/** Newest supported release that is not newer than `jarVersion` (or the oldest one, for very old jars). */
-export function pickVersion(jarVersion: string | null): string {
+/** Newest supported release that is not newer than `mcVersion` (or the oldest one, for very old versions). */
+export function pickVersion(mcVersion: string | null): string {
   const releases = mcData.supportedVersions.pc.filter((v) => /^\d+(\.\d+)*$/.test(v)).sort(cmp);
-  if (!jarVersion) return releases.at(-1)!;
-  return releases.filter((v) => cmp(v, jarVersion) <= 0).at(-1) ?? releases[0];
+  if (!mcVersion) return releases.at(-1)!;
+  return releases.filter((v) => cmp(v, mcVersion) <= 0).at(-1) ?? releases[0];
 }
 
 /** Minecraft's colormap lookup (BiomeColors / GrassColor.get). */
@@ -44,11 +44,11 @@ function colormap(img: Image, temperature: number, downfall: number): number {
 const rgb = (argb: number) => (argb >>> 0) & 0xffffff;
 
 export function blockData(
-  jarVersion: string | null,
+  mcVersion: string | null,
   colormaps: { grass: Image | null; foliage: Image | null },
   entityRendered: (name: string) => boolean,
 ): BlockData {
-  const version = pickVersion(jarVersion);
+  const version = pickVersion(mcVersion);
   const data = mcData(version);
   if (!data) throw new Error(`minecraft-data has no data for ${version}`);
 
@@ -69,10 +69,10 @@ export function blockData(
     const entry = tints[kind].data.find((e) => (e.keys as string[]).includes('plains'));
     return entry && entry.color !== 0 ? rgb(entry.color) : null;
   };
-  // Grass and foliage in plains come from the jar's colormaps (minecraft-data lists them as 0 = "computed").
+  // Grass and foliage in plains come from the colormap textures (minecraft-data lists them as 0 = "computed").
   const fromColormap = (kind: 'grass' | 'foliage') => {
     const img = colormaps[kind];
-    if (!img) throw new Error(`Jar has no textures/colormap/${kind}.png`);
+    if (!img) throw new Error(`Assets have no textures/colormap/${kind}.png`);
     return colormap(img, plains.temperature, PLAINS_DOWNFALL);
   };
   const water = biomeColor('water');

@@ -4,7 +4,7 @@
 #   DIR   folder with .litematic files, searched recursively (default: ./schematics)
 #   PORT  HTTP port (default: 8765)
 #   ARGS  extra server flags, e.g. ARGS=--no-browser
-#   JAR   Minecraft client jar for `make assets` (default: newest one found)
+#   JAR   minecraft-assets version or client jar for `make assets` (default: newest version)
 #   DOCKER  container CLI for the proto tools (default: docker)
 
 BUN  ?= bun
@@ -65,7 +65,7 @@ protogen-image: ## Build the Docker image with buf + protoc-gen-es (once per ver
 	  --build-arg NODE_IMAGE=$(NODE_IMAGE) \
 	  docker
 
-assets: node_modules ## Rebuild assets/ from a Minecraft jar (JAR=... to pick one)
+assets: node_modules ## Rebuild assets/ (JAR=<version> or JAR=<client.jar> to pick the source)
 	$(BUN) src/tools/build-assets.ts $(JAR)
 
 test: node_modules ## Run the tests

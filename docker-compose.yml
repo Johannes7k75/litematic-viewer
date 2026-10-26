@@ -2,9 +2,6 @@
 #
 # Configure with environment variables or a .env file next to this one:
 #   SCHEMATICS_DIR  folder with .litematic files, searched recursively (default: ./schematics)
-#   MINECRAFT_DIR   folder of Minecraft version dirs containing client jars
-#                   (default: ~/.minecraft/versions; for Prism Launcher use
-#                   ~/.local/share/PrismLauncher/libraries/com/mojang/minecraft)
 #   PORT            host port (default: 8765)
 
 services:
@@ -16,8 +13,3 @@ services:
       - "127.0.0.1:${PORT:-8765}:8765"
     volumes:
       - "${SCHEMATICS_DIR:-./schematics}:/schematics:ro"
-      - "${MINECRAFT_DIR:-${HOME}/.minecraft/versions}:/minecraft:ro"
-      - assets:/app/assets
-
-volumes:
-  assets:

@@ -174,7 +174,7 @@ export function pickVariant<T>(variants: Record<string, T>, props: Record<string
 const rgb = (h: number): Vec3 => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
 
 /**
- * Tint for faces with a tintindex. Colors come from minecraft-data and the jar's colormaps
+ * Tint for faces with a tintindex. Colors come from minecraft-data and the colormap textures
  * (see tools/block-data.ts); which color a block uses mirrors Minecraft's BlockColors, which
  * isn't part of any data set.
  */

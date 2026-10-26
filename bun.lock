@@ -22,6 +22,7 @@
         "@types/bun": "^1.4.4",
         "@types/three": "0.186.0",
         "babel-preset-solid": "1.9.16",
+        "minecraft-assets": "1.19.0",
         "minecraft-data": "3.117.0",
         "typescript": "^7.0.2",
       },
@@ -229,6 +230,8 @@
     "lru-cache": ["lru-cache@5.1.1", "", { "dependencies": { "yallist": "^3.0.2" } }, "sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w=="],
 
     "meshoptimizer": ["meshoptimizer@1.1.1", "", {}, "sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g=="],
+
+    "minecraft-assets": ["minecraft-assets@1.19.0", "", {}, "sha512-OZswwMV6LTfVo67KttRLAxTAmD2pMH14WNHUt1NXAikGkKkeogqbRFUKs7CcoZee576rrB6YlQJTuutYlLbOaA=="],
 
     "minecraft-data": ["minecraft-data@3.117.0", "", {}, "sha512-glKv0EEmVwKvJwdNAKAal2P7gi/nijU9rEMp8gJmqYYRVswS6hA0q9566lcGHH07Ocmpqw5bMRbARC25pR13gA=="],
 

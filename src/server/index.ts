@@ -1,19 +1,23 @@
 // Local Litematica schematic viewer.
 //
-// Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev]
+// Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev] [--prebuilt]
 //
 // --dev rebuilds the browser bundle whenever client code changes (reload the page to see it)
 // and never opens a browser. Run it under `bun --watch` (see `make dev`) so that server
 // changes restart the process too.
+//
+// --prebuilt serves dist/ and assets/ as they are, without loading the build tools (the Docker
+// image builds both and ships without the dev dependencies).
 
 import { existsSync, statSync, watch } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ASSETS_DIR, assetsOutdated, buildAssets, PROJECT_DIR } from '../tools/build-assets.ts';
-import { buildClient, CLIENT_OUT } from '../tools/build-client.ts';
 import { createApp } from './app.ts';
 
-const USAGE = 'Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev]';
+const USAGE = 'Usage: bun start [schematics_dir] [--port 8765] [--host 127.0.0.1] [--no-browser] [--dev] [--prebuilt]';
+// Same paths as tools/build-assets.ts and tools/build-client.ts, which are only imported when building.
+const PROJECT_DIR = join(import.meta.dir, '..', '..');
+const ASSETS_DIR = join(PROJECT_DIR, 'assets'), CLIENT_OUT = join(PROJECT_DIR, 'dist');
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
@@ -24,6 +28,7 @@ const { values, positionals } = parseArgs({
     host: { type: 'string', default: '127.0.0.1' },
     'no-browser': { type: 'boolean', default: false },
     dev: { type: 'boolean', default: false },
+    prebuilt: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -39,11 +44,14 @@ if (!existsSync(schematicsDir) || !statSync(schematicsDir).isDirectory()) {
   process.exit(1);
 }
 
-if (assetsOutdated()) {
-  console.log('Building block assets from your Minecraft jar (missing or outdated)...');
-  buildAssets();
+if (!values.prebuilt) {
+  const { assetsOutdated, buildAssets } = await import('../tools/build-assets.ts');
+  if (assetsOutdated()) {
+    console.log('Building block assets (missing or outdated)...');
+    buildAssets();
+  }
+  await (await import('../tools/build-client.ts')).buildClient();
 }
-await buildClient();
 
 const port = Number(values.port);
 const server = Bun.serve({
@@ -64,7 +72,8 @@ else if (!values['no-browser']) {
 }
 
 /** Rebuild the client bundle when browser code changes; a failed build keeps the last good one. */
-function watchClient(): void {
+async function watchClient(): Promise<void> {
+  const { buildClient } = await import('../tools/build-client.ts');
   const dirs = ['src/client', 'src/shared', 'src/gen'].map((d) => join(PROJECT_DIR, d));
   let timer: Timer | undefined;
   let building = false, again = false;
